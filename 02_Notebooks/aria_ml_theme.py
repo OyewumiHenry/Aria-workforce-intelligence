@@ -1,8 +1,10 @@
 """
-Advisory theme classifier for ARIA: TF-IDF + LogisticRegression.
+Research-side advisory theme classifier for ARIA.
 
-Trained on governed executive_theme labels from aria_executive_review_dataset.csv.
-Does not replace governance, overrides, or manifest-validated artifacts.
+This module preserves the optional TF-IDF + logistic regression benchmarking
+work used during technical exploration. It is kept in 02_Notebooks so the
+research layer remains reproducible without reintroducing deployment-time ML
+dependencies into the production app.
 """
 from __future__ import annotations
 
@@ -40,7 +42,7 @@ def pipeline_mapped_theme(primary: object) -> str | None:
 
 
 def _build_tfidf_union() -> FeatureUnion:
-    """Word n-grams plus character n-grams for better short-text and multilingual handling."""
+    """Word n-grams plus character n-grams for better short-text handling."""
     word_tfidf = TfidfVectorizer(
         analyzer="word",
         ngram_range=(1, 2),
@@ -85,7 +87,7 @@ def _per_class_ci(y_true: pd.Series, y_pred: np.ndarray, classes: List[str]) -> 
 
 
 def train_and_eval_theme_classifier(df: pd.DataFrame) -> Tuple[Pipeline, Dict[str, Any]]:
-    """Fit pipeline on df; return (fitted pipeline, CV metrics dict)."""
+    """Fit the advisory theme classifier and return the fitted pipeline plus metrics."""
     work = df[df["executive_theme"].isin(EXEC_THEMES)].copy()
     if work.empty:
         raise ValueError("No rows with valid executive_theme for ML.")
@@ -109,14 +111,11 @@ def train_and_eval_theme_classifier(df: pd.DataFrame) -> Tuple[Pipeline, Dict[st
     cv_accuracy = float(accuracy_score(y, y_pred_cv))
     cv_macro_f1 = float(f1_score(y, y_pred_cv, average="macro", zero_division=0))
 
-    # Per-class confidence intervals from CV predictions
     class_ci = _per_class_ci(y, y_pred_cv, EXEC_THEMES)
 
     mapped = work["primary_theme"].map(lambda v: pipeline_mapped_theme(v))
     mappable = mapped.notna()
-    pipeline_map_acc = (
-        float((mapped[mappable] == y[mappable]).mean()) if mappable.any() else 0.0
-    )
+    pipeline_map_acc = float((mapped[mappable] == y[mappable]).mean()) if mappable.any() else 0.0
 
     report_dict = classification_report(
         y, y_pred_cv, labels=EXEC_THEMES, output_dict=True, zero_division=0
@@ -138,9 +137,9 @@ def train_and_eval_theme_classifier(df: pd.DataFrame) -> Tuple[Pipeline, Dict[st
         "class_confidence_intervals": class_ci,
         "classification_report_cv": report_dict,
         "notes": (
-            "5-fold CV on n=150; high variance expected. Word+char n-gram union improves "
-            "handling of short-text and multilingual reviews. VADER remains the packaged "
-            "sentiment signal. Executive themes and overrides stay authoritative."
+            "5-fold CV on n=150; high variance expected. This research-layer model "
+            "is for benchmarking agreement with governed labels, not for replacing "
+            "the executive theme assignment."
         ),
     }
     return pipeline, metrics

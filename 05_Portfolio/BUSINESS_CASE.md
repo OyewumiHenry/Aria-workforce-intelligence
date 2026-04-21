@@ -1,115 +1,100 @@
 # ARIA Business Case
 
-What the data says, what it costs, and what the assumptions are.
+What the project is useful for, what it can support, and where the hard limits are.
 
 ---
 
 ## The Problem
 
-Workers talk publicly about their jobs — on Glassdoor, on YouTube, on Reddit. Companies usually ignore this signal until it becomes a PR crisis or a hiring bottleneck. By then the damage is done.
+Public employee sentiment is messy, visible, and usually ignored until it becomes a staffing, operations, or reputation issue. ARIA gives leadership a governed way to review that signal before it gets dismissed as noise.
 
-ARIA reads 150 public reviews from one fulfillment employer, scores them for sentiment, organizes them into five themes, and ranks those themes by attrition pressure. The output is a specific set of recommendations with owners and timelines.
-
----
-
-## What the Data Shows
-
-| Theme | Reviews | Negative Rate | Risk Score | What It Looks Like |
-|-------|---------|--------------|------------|-------------------|
-| Compensation & Benefits | 71 | 15.5% | Highest volume | Pay doesn't match physical demands. Overtime rules unclear. |
-| Workload & Burnout | 32 | 15.6% | Highest intensity | Relentless pace. Fatigue, physical strain, rate pressure. |
-| Management & Communication | 27 | 14.8% | Third overall | Manager inconsistency. Write-ups without context. Opaque promotion decisions. |
-| Career Growth | 13 | 15.4% | Moderate | No visible advancement path. Skills don't translate to promotion. |
-| Work Culture | 7 | 28.6% | Small but severe | Dignity complaints. Bathroom-break policing. YouTube amplifies. |
-
-Three themes (Compensation, Workload, Management) account for 72% of all negative reviews. That concentration means targeted interventions have disproportionate impact.
+The project reads 150 public reviews from one fulfillment-style employer, organizes them into five themes, and turns them into an executive action agenda.
 
 ---
 
-## Business Impact Model
+## Project Scope
 
-ARIA scores each theme on two dimensions:
-
-**Impact Potential** — how much operating damage the theme could cause across productivity, operations, cost, and reputation. These are executive judgment scores, not data-derived. They're transparent and adjustable.
-
-**Evidence Pressure** — how strong the data signal is. This blends negative volume share, negative rate, severity (VADER intensity), public exposure (YouTube vs Glassdoor), and theme scale.
-
-Final Business Impact = 50% Impact Potential + 50% Evidence Pressure. The blend gives equal weight to operating logic and observed data.
+ARIA covers source preparation, governance, executive theme translation, scoring logic, dashboard delivery, and documentation in one project scope.
 
 ---
 
-## Cost Framework
+## What The Data Supports
 
-### What We Know
+ARIA is useful for:
 
-- Industry-standard replacement cost for frontline warehouse workers: $15K–$30K per departure
-- Typical annual voluntary attrition in fulfillment: 60–150%
-- ARIA uses $22,000 as a mid-range replacement cost assumption
+- identifying which workforce themes dominate the negative public signal
+- showing where operating pressure is most likely to be concentrated
+- comparing written review tone versus public video testimony
+- focusing leadership on a smaller set of immediate actions
+- deciding which internal HR and operations metrics should be requested next
 
-### What We're Assuming
+---
 
-The What-If tab models cost avoidance using this formula:
+## What The Data Does Not Support
 
-```
-Avoided Cost = (Avoided Negatives / Total Negatives) × Headcount × Turnover Cost × 0.15
-```
+ARIA does **not** directly support:
 
-The 0.15 (15%) is an assumed annual voluntary attrition rate — a mid-range for fulfillment/warehouse labor. This is not measured. It's an input you can change.
+- measured turnover reduction claims
+- ROI forecasts
+- causal claims about exits, injuries, or absenteeism
+- individual-level risk scoring
 
-### The 94x ROI Claim — Where It Comes From and Why to Be Careful
+So the business case is strongest as a prioritization case, not a forecast case.
 
-The 94x figure was derived from:
-- $4.73M estimated annual savings ($22K × 1,000 headcount × 20-30% turnover reduction assumption)
-- $50K Phase 1 investment (data pipeline + dashboard development)
-- $4.73M / $50K ≈ 94x
+---
 
-**The problem**: the 20-30% turnover reduction is an assumption, not a measurement. ARIA can identify what workers complain about. It can't prove that fixing those complaints reduces turnover by 20-30% without internal HR data to validate the link.
+## Decision Value
 
-The correct way to read this: **if** targeted interventions reduce attrition by X%, **then** the cost avoidance is Y. The dashboard's What-If tab lets you model different assumptions. Use it to find the break-even point, not to confirm the 94x number.
+The value of ARIA is that it shortens the path from unstructured public complaints to leadership action:
+
+- Compensation & Benefits becomes a pay-transparency and scheduling question.
+- Workload & Burnout becomes a throughput, fatigue, and safety question.
+- Management & Communication becomes a manager-control and escalation question.
+- Career Growth becomes an internal-mobility credibility question.
+- Work Culture becomes an employee-relations and reputation question.
+
+That framing is operationally useful even before internal data is added.
+
+---
+
+## Next Metrics Leadership Should Request
+
+To turn ARIA from external signal into a stronger business case, leadership should request:
+
+- voluntary attrition by site, shift, tenure band, and manager
+- absenteeism and call-off rates by workload-heavy department
+- overtime acceptance and fill rates by site and pay band
+- safety incidents by department and peak period
+- promotion approvals and write-up rates by manager
+
+These internal cuts are what let the team test whether the public signal aligns with real operating loss.
 
 ---
 
 ## Recommendations
 
-### 0–30 Days
+### 0-30 Days
 
-| Action | Owner | Success Signal |
-|--------|-------|---------------|
-| Publish site-level pay bands, overtime premiums, flex-shift access rules | CHRO + COO | Lower pay complaints, stronger shift-fill |
-| Ban dignity-based discipline triggers (bathroom-break policing) | CHRO + Legal + Site Ops | Fewer severe public-facing complaints |
+- publish pay bands, overtime rules, and schedule predictability guardrails
+- remove dignity-based discipline triggers
 
-### 30–60 Days
+### 30-60 Days
 
-| Action | Owner | Success Signal |
-|--------|-------|---------------|
-| Install manager control metrics: write-up rates, promotion approvals, escalation closure time | COO + HRBP leaders | Lower manager-driven variance across shifts |
+- install manager-control metrics for write-ups, promotions, and escalation closure
 
-### 60–90 Days
+### 60-90 Days
 
-| Action | Owner | Success Signal |
-|--------|-------|---------------|
-| Redesign peak workload controls: cap consecutive heavy-lift assignments, protect break windows | Ops + Safety + Workforce Planning | Lower fatigue risk, steadier throughput |
-| Publish clear promotion pathways with calibrated criteria | Talent + Site Leadership | Higher internal mobility credibility |
+- redesign peak-workload controls and break protections
+- publish clearer advancement criteria
 
 ---
 
-## What Leadership Should Demand Next Week
+## Limits
 
-| KPI | Required Cut | Why |
-|-----|-------------|-----|
-| Voluntary attrition rate | By site, shift, tenure band, manager | Tests whether the review signal aligns with real retention loss |
-| Absenteeism and late-call-off rate | By shift and workload-heavy department | Validates whether burnout is showing up in daily labor reliability |
-| Overtime acceptance and fill rate | By site and pay band | Shows whether compensation friction is weakening surge capacity |
-| Safety incidents | By department and peak-period week | Tests the operating cost of workload pressure |
-| Promotion approvals and write-up rates | By manager and demographic segment | Surfaces management inconsistency |
+1. The review base is small.
+2. The data reflects one employer context.
+3. Public sentiment is partial, not complete.
+4. Business impact weights are explicit judgment calls.
+5. VADER is useful here, but still imperfect.
 
----
-
-## Limitations of This Analysis
-
-1. **No causal proof.** Review sentiment correlates with dissatisfaction, but we can't prove it causes turnover without internal turnover data.
-2. **Small sample.** 150 reviews. Some theme-platform combinations have fewer than 5 data points.
-3. **Impact scores are judgment calls.** The Productivity/Ops/Cost/Reputation weights are executive estimates, not data-derived metrics.
-4. **One company, one industry.** Results apply to this specific fulfillment environment. Don't generalize without new data.
-5. **VADER's ceiling.** 70% accuracy means roughly 1 in 3 sentiment labels may be wrong. Wilson intervals absorb some of this noise, but systematic error isn't fully captured.
-6. **No financial forecast.** The ROI figures are sensitivity exercises. They show what happens *if* assumptions hold, not what *will* happen.
+The business case is simple: ARIA helps leadership decide where to investigate and act first. It should not be presented as proof that a specific intervention will create a specific financial return.

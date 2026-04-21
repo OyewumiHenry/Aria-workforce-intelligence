@@ -1,0 +1,13 @@
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+.env
+.venv/
+venv/
+.streamlit/secrets.toml
+streamlit_local.out
+streamlit_local.err
+.streamlit_local_pid

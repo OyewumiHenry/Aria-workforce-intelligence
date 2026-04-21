@@ -7,11 +7,9 @@ artifacts are required in git. Run this script to reproduce metrics or for CI ch
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT / "deployment"))
 
 from aria_ml_theme import train_and_eval_theme_classifier
 
