@@ -29,13 +29,11 @@ The top of the dashboard shows six KPI cards:
 - Pipeline HIGH Confidence
 - Top 3 Driver Share
 
-The "What Each Page Means" expander gives a one-line purpose for each tab.
+The `Page Summary` expander gives a one-line purpose for each tab.
 
 ---
 
 ## Tab 1: Executive Brief
-
-Use this first.
 
 It contains:
 
@@ -46,13 +44,11 @@ It contains:
 - impact case summary
 - strategic recommendations
 
-This is the shortest credible version of the whole project.
+This tab condenses the full project into one readout.
 
 ---
 
 ## Tab 2: Decision Agenda
-
-Use this when presenting.
 
 It contains:
 
@@ -67,8 +63,6 @@ It contains:
 
 ## Tab 3: Risk Ranking
 
-Use this when someone asks why a theme ranks where it does.
-
 It contains:
 
 - horizontal bar chart of workforce risk score by theme
@@ -80,8 +74,6 @@ The score is relative inside this dataset. It is not a prediction.
 ---
 
 ## Tab 4: Impact Case
-
-Use this when someone asks what each theme is likely to do to operations.
 
 It contains:
 
@@ -97,8 +89,6 @@ This tab is the executive prioritization layer, not a financial model.
 
 ## Tab 5: Evidence By Platform
 
-Use this when someone asks how Glassdoor and YouTube differ.
-
 It contains:
 
 - platform summary cards
@@ -110,8 +100,6 @@ The main point is not that one platform is "truer." It is that the two platforms
 ---
 
 ## Tab 6: Method Appendix
-
-Use this when someone asks how ARIA was built and constrained.
 
 It contains:
 
@@ -129,8 +117,6 @@ It contains:
 ---
 
 ## Tab 7: Evidence Audit
-
-Use this when someone wants to inspect the underlying rows directly.
 
 It contains:
 

@@ -28,6 +28,12 @@ ARIA is useful for:
 - focusing leadership on a smaller set of immediate actions
 - deciding which internal HR and operations metrics should be requested next
 
+The current business conclusion is strongest when it is framed this way:
+
+- "These are the clearest external workforce-risk signals right now."
+- "These are the issues leadership should validate first with internal KPIs."
+- "These are the operating questions most worth escalating now."
+
 ---
 
 ## What The Data Does Not Support
@@ -40,6 +46,9 @@ ARIA does **not** directly support:
 - individual-level risk scoring
 
 So the business case is strongest as a prioritization case, not a forecast case.
+
+That means the best current conclusion is not "this caused attrition."
+It is "this is the strongest external warning signal and the best place to investigate next."
 
 ---
 
@@ -57,6 +66,40 @@ That framing is operationally useful even before internal data is added.
 
 ---
 
+## What Leadership Can Say Today
+
+These are the strongest evidence-bounded conclusions in the current version:
+
+- The negative signal is concentrated rather than diffuse, so executive attention does not need to be spread across all five themes equally.
+- Compensation & Benefits is the largest negative-volume issue in the sample and should be treated as the first compensation and scheduling review priority.
+- Workload & Burnout and Management & Communication are the clearest execution-risk themes because they point to fatigue pressure, frontline inconsistency, and weak escalation control.
+- Public video testimony is harsher than Glassdoor in this sample, but because YouTube is smaller, it should be read as escalation pressure rather than equal-weight proof.
+- The best current use of ARIA is to direct internal validation, not to close the case on causality.
+
+Those statements are strong enough for executive discussion because they stay inside the evidence boundary.
+
+---
+
+## Current Conclusion Strength
+
+What is already strong:
+
+- concentration of negative signal in a small number of themes
+- ranking of current external pressure points
+- identification of the first policies and operating levers worth reviewing
+- argument for which internal KPIs should be requested next
+
+What still needs validation:
+
+- whether the public signal aligns with measured attrition
+- whether burnout signal aligns with absenteeism or safety loss
+- whether pay friction is weakening overtime fill or shift coverage
+- whether manager inconsistency is visible in promotion or discipline data
+
+So the current business conclusion should be presented as "high-confidence prioritization" rather than "high-confidence proof."
+
+---
+
 ## Next Metrics Leadership Should Request
 
 To turn ARIA from external signal into a stronger business case, leadership should request:
@@ -68,6 +111,10 @@ To turn ARIA from external signal into a stronger business case, leadership shou
 - promotion approvals and write-up rates by manager
 
 These internal cuts are what let the team test whether the public signal aligns with real operating loss.
+
+Once those metrics are added, the business conclusion gets materially stronger because the story becomes:
+
+`external signal -> internal KPI check -> action decision`
 
 ---
 
@@ -97,4 +144,4 @@ These internal cuts are what let the team test whether the public signal aligns 
 4. Business impact weights are explicit judgment calls.
 5. VADER is useful here, but still imperfect.
 
-The business case is simple: ARIA helps leadership decide where to investigate and act first. It should not be presented as proof that a specific intervention will create a specific financial return.
+The business case is simple: ARIA helps leadership decide where to investigate and act first. It should not be presented as proof that a specific intervention will create a specific financial return, but it is strong enough to support a focused review agenda and a sharper KPI request list.

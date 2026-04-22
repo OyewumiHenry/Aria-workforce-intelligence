@@ -851,18 +851,68 @@ youtube_theme_leader = platform_summary[
     ascending=False,
 ).iloc[0]
 small_sample_leader = low_sample_watchlist.iloc[0] if not low_sample_watchlist.empty else None
+stability_lookup = stability_table.set_index("Theme")
+risk_leader_stability = stability_lookup.loc[risk_leader["Theme"]]
+top_business_impact_stability = stability_lookup.loc[top_business_impact["Theme"]]
+
+decision_validation_map = {
+    "Compensation & Benefits": {
+        "Leadership Read": "Compensation and schedule design are the clearest external friction signal in this review set and should be reviewed before treating the issue as a pure recruiting shortage.",
+        "Next KPI": "Overtime acceptance and fill rate by site and pay band",
+        "Decision Use": "Comp review, scheduling review, and shift-fill pressure check",
+    },
+    "Workload & Burnout": {
+        "Leadership Read": "Workload design appears to be creating sustained fatigue pressure and should be treated as an operations and safety review priority, not just a morale complaint cluster.",
+        "Next KPI": "Absenteeism and late-call-off rate by workload-heavy department",
+        "Decision Use": "Peak-workload redesign and labor-reliability review",
+    },
+    "Management & Communication": {
+        "Leadership Read": "Manager variance and escalation handling appear to be a real control-system risk, not just isolated tone issues.",
+        "Next KPI": "Write-up rates, department moves, and escalation closure time by manager",
+        "Decision Use": "Frontline-control review and manager-variance audit",
+    },
+    "Career Growth": {
+        "Leadership Read": "Advancement credibility looks like a secondary but persistent trust issue that can weaken retention credibility over time.",
+        "Next KPI": "Promotion approvals by manager, tenure band, and segment",
+        "Decision Use": "Promotion-criteria review and internal-mobility check",
+    },
+    "Work Culture": {
+        "Leadership Read": "Low-volume dignity complaints carry outsized employee-relations and employer-brand exposure and should be handled as a policy-risk issue.",
+        "Next KPI": "Employee-relations cases and policy exceptions tied to dignity complaints",
+        "Decision Use": "Policy review and reputational-risk containment",
+    },
+}
+
+
+def classify_conclusion_strength(
+    evidence_confidence: float,
+    stability_pct: float,
+    negative_reviews_count: int,
+    low_sample_risk: str,
+) -> str:
+    if (
+        evidence_confidence >= 7.5
+        and stability_pct >= 80
+        and negative_reviews_count >= 10
+        and low_sample_risk == "No"
+    ):
+        return "High for external-signal use"
+    if evidence_confidence >= 6.0 and stability_pct >= 60:
+        return "Moderate"
+    return "Directional"
 
 observed_findings = [
     f"{mono_number(top_drivers['Negative Reviews'].sum())} of {mono_number(negative_reviews)} negative reviews ({pct(top_driver_negative_share)}) sit in {top_driver_theme_list}. The negative signal is concentrated rather than spread evenly across all five themes.",
-    f"{volume_leader['Theme']} is the largest negative driver by volume: {mono_number(volume_leader['Negative Reviews'])} negative reviews across {mono_number(volume_leader['Reviews'])} reviews ({pct(volume_leader['Negative Rate %'])} negative, intensity {volume_leader['Avg Negative Intensity']:.1f}/100).",
-    f"{risk_leader['Theme']} ranks first on the workforce risk index with score {risk_leader['Risk Score']:.1f}, meaning it currently combines frequency and severity more strongly than any other theme in this review set.",
+    f"{volume_leader['Theme']} carries the largest negative review volume in this sample: {mono_number(volume_leader['Negative Reviews'])} negative reviews across {mono_number(volume_leader['Reviews'])} reviews ({pct(volume_leader['Negative Rate %'])} negative, intensity {volume_leader['Avg Negative Intensity']:.1f}/100).",
+    f"{risk_leader['Theme']} ranks first on the workforce risk index with score {risk_leader['Risk Score']:.1f} and remains in the top three in {mono_number(risk_leader_stability['Top 3 Appearances'])} of {mono_number(scenario_count)} scenario views, so the rank is not dependent on a single weighting choice.",
     f"YouTube is more negative in this sample but materially smaller in scale: n={mono_number(youtube_reviews)} with {pct(youtube_negative_rate)} negative (95% CI {ci_label(youtube_ci_low, youtube_ci_high)}) versus Glassdoor n={mono_number(glassdoor_reviews)} with {pct(glassdoor_negative_rate)} negative (95% CI {ci_label(glassdoor_ci_low, glassdoor_ci_high)}). Platform differences are therefore treated as pressure indicators, not equal-weight evidence.",
 ]
 
 executive_judgment = [
-    f"{top_business_impact['Theme']} should be treated as the highest business-impact estimate at {top_business_impact['Business Impact Rating']:.1f}/10. That estimate blends operating impact potential with observed evidence pressure, and the current evidence confidence for this theme is {top_business_impact['Evidence Confidence']:.1f}/10 ({top_business_impact['Confidence Band']}).",
-    f"{volume_leader['Theme']} should be treated as the first management lever because it carries the largest negative volume and is most likely to keep amplifying scheduling friction, staffing strain, and avoidable escalation if left unresolved.",
-    f"{public_exposure_leader['Theme']} requires disproportionate policy attention when public-exposure pressure outruns review volume because small, severe complaint clusters can create outsized reputational or employee-relations escalation.",
+    f"{top_business_impact['Theme']} should be treated as the strongest current executive priority, not because ARIA proves financial loss, but because its operating exposure and observed evidence align at {top_business_impact['Business Impact Rating']:.1f}/10 with evidence confidence {top_business_impact['Evidence Confidence']:.1f}/10 ({top_business_impact['Confidence Band']}).",
+    f"{volume_leader['Theme']} should be treated as the first internal validation target because it carries the largest negative volume and is the most plausible place to test whether public friction is already showing up in shift fill, overtime acceptance, or retention loss.",
+    f"{public_exposure_leader['Theme']} requires disproportionate policy attention when public-exposure pressure outruns review volume because small, severe complaint clusters can create outsized reputational or employee-relations escalation before the volume looks large in aggregate.",
+    "Leadership can safely conclude that pay design, workload design, and frontline management controls are the three most defensible places to investigate next. Leadership should not claim causal attrition or ROI effects until internal KPIs are added.",
 ]
 
 ranking_rationales = {}
@@ -885,9 +935,9 @@ for _, row in risk_ranking.iterrows():
         ranking_rationales[row["Theme"]] = reasons[0].capitalize() + " and " + reasons[1] + "."
 
 business_impact = [
-    f"Productivity: {top_business_impact['Theme']} carries the highest current business-impact estimate because its impact potential ({top_business_impact['Impact Potential']:.1f}/10) is reinforced by a strong observed signal ({top_business_impact['Evidence Pressure']:.1f}/10).",
+    f"Productivity and cost: {top_business_impact['Theme']} carries the highest current business-impact estimate because its impact potential ({top_business_impact['Impact Potential']:.1f}/10) is reinforced by a strong observed signal ({top_business_impact['Evidence Pressure']:.1f}/10) and stable rank behavior.",
     "Operations: Management & Communication and Workload & Burnout remain the clearest execution-risk themes because they weaken frontline consistency, sustainable pace, and peak-period stability.",
-    f"Cost and risk: {volume_leader['Theme']} is the largest negative-volume driver, while {public_exposure_leader['Theme']} carries the highest public-exposure pressure. With YouTube at only n={mono_number(youtube_reviews)}, that platform is treated as an escalation signal rather than a standalone verdict.",
+    f"Decision use: {volume_leader['Theme']} is the largest negative-volume driver, while {public_exposure_leader['Theme']} carries the highest public-exposure pressure. That means the best current business conclusion is where to investigate first, not what outcome has already been proven.",
 ]
 
 impact_evidence = [
@@ -924,11 +974,42 @@ strategic_recommendations = [
 ]
 
 boardroom_opening = [
-    f"The negative signal is concentrated, not diffuse: {mono_number(top_drivers['Negative Reviews'].sum())} of {mono_number(negative_reviews)} negative reviews ({pct(top_driver_negative_share)}) sit in {top_driver_theme_list}.",
-    f"{volume_leader['Theme']} is the largest negative-volume driver with {mono_number(volume_leader['Negative Reviews'])} negative reviews, while {risk_leader['Theme']} ranks first overall on workforce risk.",
-    f"{risk_leader['Theme']} ranks first on workforce risk, while {top_business_impact['Theme']} ranks first on business impact after blending operating exposure with observed evidence.",
+    f"The strongest conclusion today is concentration, not causality: {mono_number(top_drivers['Negative Reviews'].sum())} of {mono_number(negative_reviews)} negative reviews ({pct(top_driver_negative_share)}) sit in {top_driver_theme_list}.",
+    f"{volume_leader['Theme']} is the largest negative-volume driver with {mono_number(volume_leader['Negative Reviews'])} negative reviews, while {risk_leader['Theme']} ranks first overall on workforce risk and stays in the top three in {mono_number(risk_leader_stability['Top 3 Appearances'])} of {mono_number(scenario_count)} scenario views.",
+    f"{risk_leader['Theme']} ranks first on workforce risk, while {top_business_impact['Theme']} ranks first on business impact after blending operating exposure with observed evidence. That is a prioritization result, not proof of downstream losses.",
     f"Public testimony is smaller but harsher: YouTube is n={mono_number(youtube_reviews)} at {pct(youtube_negative_rate)} negative versus Glassdoor n={mono_number(glassdoor_reviews)} at {pct(glassdoor_negative_rate)} negative. Reputation risk is real, but the samples are not equal in weight.",
 ]
+
+leadership_safe_claims = [
+    f"It is safe to say that the external negative signal is concentrated in {top_driver_theme_list}, rather than spread evenly across all five themes.",
+    f"It is safe to say that {volume_leader['Theme']}, {risk_leader['Theme']}, and {top_business_impact['Theme']} are the strongest current candidates for executive review because volume, risk rank, and impact estimate all point toward them.",
+    "It is safe to say that ARIA supports targeted investigation and action prioritization. It is not safe to say that ARIA has proven attrition, injury, or ROI outcomes.",
+    "It is safe to ask leadership for the next validating KPI immediately, because the current evidence is strong enough to justify follow-up but not strong enough to close the case on causality.",
+]
+
+conclusion_strength_rows = []
+for _, row in risk_ranking.iterrows():
+    theme = row["Theme"]
+    impact_row = business_impact_table[business_impact_table["Theme"] == theme].iloc[0]
+    stability_row = stability_lookup.loc[theme]
+    guidance = decision_validation_map[theme]
+    conclusion_strength_rows.append(
+        {
+            "Theme": theme,
+            "Signal Strength": classify_conclusion_strength(
+                float(impact_row["Evidence Confidence"]),
+                float(stability_row["Top 3 Stability %"]),
+                int(impact_row["Current Negative Reviews"]),
+                str(impact_row["Low Sample Risk"]),
+            ),
+            "Evidence Confidence": f"{impact_row['Evidence Confidence']:.1f}/10",
+            "Stability": f"{int(stability_row['Top 3 Appearances'])}/{scenario_count} scenarios",
+            "What leadership can say now": guidance["Leadership Read"],
+            "Next KPI to validate": guidance["Next KPI"],
+            "Best decision use": guidance["Decision Use"],
+        }
+    )
+conclusion_strength_table = pd.DataFrame(conclusion_strength_rows)
 
 decision_agenda = pd.DataFrame(
     [
@@ -1033,31 +1114,31 @@ page_guide_table = pd.DataFrame(
     [
         {
             "Page": "Executive Brief",
-            "What It Means": "Use this first. It compresses the story into findings, risk, impact, and actions.",
+            "Purpose": "Condensed readout of findings, risk, impact, and actions.",
         },
         {
             "Page": "Decision Agenda",
-            "What It Means": "Use this when speaking in the room: opening script, actions, KPI asks, and challenge answers.",
+            "Purpose": "Opening narrative, actions, KPI requests, and challenge responses.",
         },
         {
             "Page": "Risk Ranking",
-            "What It Means": "Use this when someone asks why one theme ranks above another on workforce pressure.",
+            "Purpose": "Current order of workforce pressure across the five themes.",
         },
         {
             "Page": "Impact Case",
-            "What It Means": "Use this when someone asks what operating damage each theme is most likely to create.",
+            "Purpose": "Operating, cost, and reputation exposure by theme.",
         },
         {
             "Page": "Evidence by Platform",
-            "What It Means": "Use this when someone asks how Glassdoor and YouTube differ and how much to trust the gap.",
+            "Purpose": "Cross-platform readout with sample-size context.",
         },
         {
             "Page": "Method Appendix",
-            "What It Means": "Use this when someone asks how the data, controls, and calculations were built.",
+            "Purpose": "Data provenance, controls, formulas, and limits.",
         },
         {
             "Page": "Evidence Audit",
-            "What It Means": "Use this when someone wants to trace a claim back to the review level.",
+            "Purpose": "Row-level traceability for the governed review set.",
         },
     ]
 )
@@ -1071,6 +1152,9 @@ executive_brief_text = "\n".join(
         "",
         "## Executive Judgment",
         *[f"- {item}" for item in executive_judgment],
+        "",
+        "## What Leadership Can Say Today",
+        *[f"- {item}" for item in leadership_safe_claims],
         "",
         "## Risk Ranking",
         *[
@@ -1153,7 +1237,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-with st.expander("What Each Page Means", expanded=False):
+with st.expander("Page Summary", expanded=False):
     st.dataframe(page_guide_table, use_container_width=True, hide_index=True)
 
 metric_cols = st.columns(6)
@@ -1195,7 +1279,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
 with tab1:
     st.markdown("## Key Findings")
     section_subtitle(
-        "Start here. This page gives the shortest credible version of the story."
+        "Condensed readout of findings, risk, impact, and actions."
     )
 
     driver_cols = st.columns(3)
@@ -1204,6 +1288,8 @@ with tab1:
         yt_rate = platform_value(platform_summary, row["Theme"], "YouTube", "Negative Rate %")
         gd_reviews = platform_value(platform_summary, row["Theme"], "Glassdoor", "Reviews")
         yt_reviews = platform_value(platform_summary, row["Theme"], "YouTube", "Reviews")
+        impact_row = business_impact_table[business_impact_table["Theme"] == row["Theme"]].iloc[0]
+        stability_row = stability_lookup.loc[row["Theme"]]
         theme_color = THEME_COLORS[row["Theme"]]
         driver_cols[idx].markdown(
             f"""
@@ -1214,7 +1300,9 @@ with tab1:
                     Negative reviews: {mono_number(row["Negative Reviews"])} of {mono_number(row["Reviews"])}<br>
                     Negative intensity: {row["Avg Negative Intensity"]:.1f}/100<br>
                     Glassdoor negative: {pct(gd_rate)} on n={mono_number(gd_reviews)}<br>
-                    YouTube negative: {pct(yt_rate)} on n={mono_number(yt_reviews)}
+                    YouTube negative: {pct(yt_rate)} on n={mono_number(yt_reviews)}<br>
+                    Evidence confidence: {impact_row["Evidence Confidence"]:.1f}/10<br>
+                    Top-3 stability: {int(stability_row["Top 3 Appearances"])}/{scenario_count} scenarios
                 </div>
             </div>
             """,
@@ -1227,9 +1315,28 @@ with tab1:
     st.markdown("### Executive Judgment Based On Operating Logic")
     render_bullet_list(executive_judgment)
 
+    st.markdown("### Conclusion Strength By Theme")
+    section_subtitle(
+        "This is the safest business-reading layer: what leadership can say now, how strong the signal is, and which KPI should validate it next."
+    )
+    st.dataframe(
+        conclusion_strength_table,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Theme": st.column_config.TextColumn("Theme", width="small"),
+            "Signal Strength": st.column_config.TextColumn("Signal Strength", width="small"),
+            "Evidence Confidence": st.column_config.TextColumn("Evidence Confidence", width="small"),
+            "Stability": st.column_config.TextColumn("Stability", width="small"),
+            "What leadership can say now": st.column_config.TextColumn("What leadership can say now", width="large"),
+            "Next KPI to validate": st.column_config.TextColumn("Next KPI to validate", width="medium"),
+            "Best decision use": st.column_config.TextColumn("Best decision use", width="medium"),
+        },
+    )
+
     st.markdown("---")
     st.markdown("## Risk Ranking")
-    section_subtitle("Read this as the current order of workforce pressure across the five themes.")
+    section_subtitle("Current order of workforce pressure across the five themes.")
     for _, row in risk_ranking.iterrows():
         st.markdown(
             f"""
@@ -1252,7 +1359,7 @@ with tab1:
 with tab2:
     st.markdown("## Decision Agenda")
     section_subtitle(
-        "Use this page to speak, defend, and direct next steps in the room."
+        "Opening narrative, actions, KPI requests, and challenge responses."
     )
 
     st.markdown(
@@ -1266,6 +1373,9 @@ with tab2:
 
     st.markdown("### 90-Second Opening")
     render_bullet_list(boardroom_opening)
+
+    st.markdown("### What Leadership Can Say Today")
+    render_bullet_list(leadership_safe_claims)
 
     download_cols = st.columns(4)
     download_cols[0].download_button(
@@ -1332,7 +1442,7 @@ with tab2:
 with tab3:
     st.markdown("## Risk Ranking")
     section_subtitle(
-        "Use this page when someone asks why one theme ranks above another on workforce risk."
+        "Current ranking of workforce pressure across the five themes."
     )
 
     risk_chart = risk_ranking.copy().sort_values("Risk Score", ascending=True)
@@ -1434,7 +1544,7 @@ with tab3:
 with tab4:
     st.markdown("## Impact Case")
     section_subtitle(
-        "Use this page when someone asks what each theme is likely to do to operations, cost, or reputation."
+        "Operating, cost, and reputation exposure by theme."
     )
 
     st.markdown("### Observed Evidence Feeding The Estimate")
@@ -1602,7 +1712,7 @@ with tab4:
 with tab5:
     st.markdown("## Evidence by Platform")
     section_subtitle(
-        "Use this page when someone asks how Glassdoor and YouTube differ and how much weight to put on that difference."
+        "Cross-platform signal comparison with sample-size context."
     )
 
     c1, c2, c3 = st.columns(3)
@@ -1696,7 +1806,7 @@ with tab5:
 with tab6:
     st.markdown("## Method Appendix")
     section_subtitle(
-        "Use this page when someone asks how ARIA was built, checked, and constrained."
+        "Data provenance, controls, formulas, and limits."
     )
 
     provenance_cols = st.columns(4)
@@ -1837,7 +1947,7 @@ with tab6:
 with tab7:
     st.markdown("## Evidence Audit")
     section_subtitle(
-        "Use this page when someone wants to inspect the underlying reviews directly."
+        "Row-level traceability for the governed review set."
     )
 
     audit_cols = st.columns(3)

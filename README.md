@@ -32,10 +32,10 @@ The deployed app is an evidence review tool, not a predictive HR system.
 
 ## Key Findings
 
-- Compensation & Benefits is the largest negative driver by volume.
-- Workload & Burnout carries the sharpest operational strain signal.
-- Management & Communication remains a major execution-risk theme.
-- The top three themes hold most of the negative signal, so the problem is concentrated rather than diffuse.
+- Compensation & Benefits carries the largest negative review volume in this sample and is the clearest first compensation and scheduling review priority.
+- Workload & Burnout carries the sharpest operational-strain signal and remains a top-tier execution concern under sensitivity testing.
+- Management & Communication remains a major control-system risk because complaints cluster around inconsistency, escalation, and advancement credibility.
+- The top three themes hold most of the negative signal, so the strongest conclusion is concentration of pressure, not diffuse dissatisfaction across every theme.
 
 ---
 
@@ -104,9 +104,9 @@ ARIA/
 
 ## Dashboard Tabs
 
-1. **Executive Brief** - the shortest credible version of the story
-2. **Decision Agenda** - opening script, actions, KPI asks, and challenge responses
-3. **Risk Ranking** - relative workforce-risk ranking across the five themes
+1. **Executive Brief** - condensed readout of findings, risk, impact, and actions
+2. **Decision Agenda** - opening narrative, actions, KPI asks, and challenge responses
+3. **Risk Ranking** - current workforce-risk ranking across the five themes
 4. **Impact Case** - operating impact estimate grounded in explicit assumptions
 5. **Evidence by Platform** - Glassdoor versus YouTube readout with sample-size context
 6. **Method Appendix** - governance, formulas, validation, and limits
