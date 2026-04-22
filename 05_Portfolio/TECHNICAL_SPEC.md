@@ -115,8 +115,8 @@ The deployment config keeps the app in a presentation-safe posture:
 
 The deployed app exposes seven views:
 
-1. Executive Brief
-2. Decision Agenda
+1. Executive Brief - findings, conclusion strength, and segment checks
+2. Decision Agenda - agenda, KPI requests, and business validation matrix
 3. Risk Ranking
 4. Impact Case
 5. Evidence by Platform

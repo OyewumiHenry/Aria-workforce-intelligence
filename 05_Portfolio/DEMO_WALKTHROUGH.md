@@ -1,6 +1,6 @@
 # ARIA Dashboard Walkthrough
 
-What each tab does and how to present it cleanly.
+Dashboard sections and their contents.
 
 ---
 
@@ -40,11 +40,13 @@ It contains:
 - top driver cards
 - observed findings
 - executive judgment
+- conclusion-strength table
+- segment checks
 - risk ranking summary
 - impact case summary
 - strategic recommendations
 
-This tab condenses the full project into one readout.
+This is the shortest full readout of the project.
 
 ---
 
@@ -57,7 +59,10 @@ It contains:
 - download buttons for the brief, method appendix, and CSV exports
 - a 30/60/90-day agenda
 - KPI requests for leadership
+- business validation matrix
 - a challenge-response grid
+
+This tab holds the action and validation layer.
 
 ---
 

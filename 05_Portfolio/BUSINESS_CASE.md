@@ -25,14 +25,15 @@ ARIA is useful for:
 - identifying which workforce themes dominate the negative public signal
 - showing where operating pressure is most likely to be concentrated
 - comparing written review tone versus public video testimony
+- checking whether the top conclusions still hold across platform, employee-status, and rating-band cuts
 - focusing leadership on a smaller set of immediate actions
 - deciding which internal HR and operations metrics should be requested next
 
 The current business conclusion is strongest when it is framed this way:
 
-- "These are the clearest external workforce-risk signals right now."
-- "These are the issues leadership should validate first with internal KPIs."
-- "These are the operating questions most worth escalating now."
+- These are the clearest external workforce-risk signals in the current governed sample.
+- These are the themes with enough segment support to justify immediate internal KPI testing.
+- These are the operating questions most worth escalating now.
 
 ---
 
@@ -52,6 +53,19 @@ It is "this is the strongest external warning signal and the best place to inves
 
 ---
 
+## Why The Business Read Is Stronger Now
+
+The current version is more defensible because it does more than rank themes:
+
+- the top-theme order is stress-tested across six scenario views
+- the platform comparison prevents one source from carrying the whole story alone
+- segment checks across employee status and rating band reduce reliance on one blended average
+- each theme is tied to a next-step KPI and a confirmation pattern through the validation matrix
+
+That does not create causality, but it does make the business read harder to dismiss as a one-view opinion.
+
+---
+
 ## Decision Value
 
 The value of ARIA is that it shortens the path from unstructured public complaints to leadership action:
@@ -66,7 +80,7 @@ That framing is operationally useful even before internal data is added.
 
 ---
 
-## What Leadership Can Say Today
+## Current Executive Read
 
 These are the strongest evidence-bounded conclusions in the current version:
 
@@ -74,6 +88,7 @@ These are the strongest evidence-bounded conclusions in the current version:
 - Compensation & Benefits is the largest negative-volume issue in the sample and should be treated as the first compensation and scheduling review priority.
 - Workload & Burnout and Management & Communication are the clearest execution-risk themes because they point to fatigue pressure, frontline inconsistency, and weak escalation control.
 - Public video testimony is harsher than Glassdoor in this sample, but because YouTube is smaller, it should be read as escalation pressure rather than equal-weight proof.
+- Segment checks show that the top themes are not being created by one blended average alone.
 - The best current use of ARIA is to direct internal validation, not to close the case on causality.
 
 Those statements are strong enough for executive discussion because they stay inside the evidence boundary.
@@ -86,6 +101,7 @@ What is already strong:
 
 - concentration of negative signal in a small number of themes
 - ranking of current external pressure points
+- segment support behind the top themes, so the conclusion is not resting on one blended average alone
 - identification of the first policies and operating levers worth reviewing
 - argument for which internal KPIs should be requested next
 
@@ -97,6 +113,18 @@ What still needs validation:
 - whether manager inconsistency is visible in promotion or discipline data
 
 So the current business conclusion should be presented as "high-confidence prioritization" rather than "high-confidence proof."
+
+---
+
+## Business Validation Matrix
+
+| Theme | Current external read | Segment support now | Next KPI to test | What would strengthen the conclusion |
+|-------|-----------------------|---------------------|------------------|--------------------------------------|
+| Compensation & Benefits | Largest negative-volume issue and the first pay and scheduling review priority. | Present across both platforms and visible in both current- and former-employee cuts. | Overtime fill, shift coverage, voluntary exits | High-friction sites also show weaker shift fill or higher exits. |
+| Workload & Burnout | Sharpest operational-strain signal and the clearest fatigue-control priority. | Harsher in low-rated feedback and in the smaller but more severe video testimony. | Absenteeism, call-offs, safety incidents | Workload-heavy areas also show higher call-offs or incident rates. |
+| Management & Communication | Manager-control and escalation risk with advancement credibility concerns. | More pronounced in former-employee and rated-review segments than in the blended average alone. | Promotion approvals, write-up variance, escalation closure | Manager-level outliers track complaint concentration. |
+| Career Growth | Advancement-credibility issue with lower volume than the top three themes. | Concentrated signal, but not broad enough yet to outrank the core operating risks. | Promotion rate, time-to-promotion | Low-mobility units also show stronger advancement complaints. |
+| Work Culture | Employee-relations and reputation risk with lower direct operating weight. | Cross-platform signal, but lighter than the top operational themes. | Employee-relations cases, referral rate, retention | Culture-heavy sites also show weaker referrals or retention. |
 
 ---
 

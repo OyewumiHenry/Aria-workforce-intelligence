@@ -100,6 +100,7 @@ The governed bundle includes the raw pipeline output, executive review dataset, 
 | `prepare_dataset()` | Normalize fields and finalize executive-theme assignment |
 | `build_theme_summary()` | Aggregate review and sentiment metrics by theme |
 | `build_platform_summary()` | Compare the five themes across platforms |
+| `build_segment_summary()` | Summarize employee-status and rating-band cuts that support validation framing |
 | `build_stability_tables()` | Stress-test rankings across six scenario views |
 | `build_business_impact_table()` | Blend operating impact assumptions with observed evidence |
 | `validate_governance_bundle()` | Enforce manifest integrity before rendering |

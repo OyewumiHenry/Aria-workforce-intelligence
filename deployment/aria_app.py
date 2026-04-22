@@ -164,6 +164,7 @@ def prepare_dataset(data: pd.DataFrame) -> pd.DataFrame:
     df["platform"] = df["platform"].fillna("Unknown")
     df["final_sentiment"] = df["final_sentiment"].fillna("neutral").str.lower()
     df["source_id"] = pd.to_numeric(df["source_id"], errors="coerce").fillna(-1).astype(int)
+    df["rating_overall"] = pd.to_numeric(df.get("rating_overall"), errors="coerce")
     df["pipeline_confidence"] = df["confidence"].fillna("NONE").astype(str).str.upper()
     df["pipeline_confidence_score"] = df["pipeline_confidence"].map(
         PIPELINE_CONFIDENCE_SCORES
@@ -197,6 +198,33 @@ def prepare_dataset(data: pd.DataFrame) -> pd.DataFrame:
         df["override_reason"] = df["override_reason"].fillna("")
     else:
         df["override_reason"] = ""
+
+    employee_type = df.get("employee_type", pd.Series("", index=df.index)).fillna("").astype(str).str.lower()
+    df["employee_status_segment"] = np.select(
+        [
+            employee_type.str.contains("current", regex=False),
+            employee_type.str.contains("former", regex=False),
+        ],
+        [
+            "Current employee",
+            "Former employee",
+        ],
+        default="Unknown / not stated",
+    )
+
+    df["rating_band"] = np.select(
+        [
+            df["rating_overall"] <= 2,
+            df["rating_overall"] == 3,
+            df["rating_overall"] >= 4,
+        ],
+        [
+            "Low rating (1-2)",
+            "Mid rating (3)",
+            "High rating (4-5)",
+        ],
+        default="Not rated",
+    )
 
     df["negative_intensity"] = df.apply(compute_negative_intensity, axis=1)
     df["negative_intensity_pct"] = (df["negative_intensity"] * 100).round(1)
@@ -259,6 +287,71 @@ def build_platform_summary(df: pd.DataFrame) -> pd.DataFrame:
                 }
             )
     return pd.DataFrame(rows)
+
+
+def build_segment_summary(
+    df: pd.DataFrame,
+    segment_column: str,
+    segment_label: str,
+    segment_values: List[str],
+) -> pd.DataFrame:
+    rows = []
+    for theme in EXEC_THEMES:
+        for segment in segment_values:
+            segment_df = df[
+                (df["executive_theme"] == theme)
+                & (df[segment_column] == segment)
+            ].copy()
+            if segment_df.empty:
+                continue
+            negative_df = segment_df[segment_df["final_sentiment"] == "negative"]
+            negative_rate = round((len(negative_df) / len(segment_df) * 100), 1) if len(segment_df) else 0.0
+            avg_negative_intensity = round(negative_df["negative_intensity_pct"].mean(), 1) if len(negative_df) else 0.0
+            ci_low, ci_high = wilson_interval(len(negative_df), len(segment_df))
+            rows.append(
+                {
+                    "Theme": theme,
+                    segment_label: segment,
+                    "Reviews": int(len(segment_df)),
+                    "Negative Reviews": int(len(negative_df)),
+                    "Negative Rate %": negative_rate,
+                    "Negative Rate CI": ci_label(ci_low, ci_high),
+                    "Sample Read": sample_read_label(len(segment_df)),
+                    "Avg Negative Intensity": avg_negative_intensity,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def strongest_segment_read(
+    summary_df: pd.DataFrame,
+    theme: str,
+    segment_label: str,
+    min_reviews: int,
+) -> str:
+    if summary_df.empty:
+        return "No segment read available."
+
+    working = summary_df[
+        (summary_df["Theme"] == theme)
+        & (summary_df["Reviews"] >= min_reviews)
+    ].copy()
+    if working.empty:
+        working = summary_df[
+            (summary_df["Theme"] == theme)
+            & (summary_df["Reviews"] > 0)
+        ].copy()
+    if working.empty:
+        return "No segment read available."
+
+    row = working.sort_values(
+        by=["Negative Rate %", "Negative Reviews", "Avg Negative Intensity", "Reviews"],
+        ascending=False,
+    ).iloc[0]
+    return (
+        f"{row[segment_label]}: {pct(row['Negative Rate %'])} negative on "
+        f"n={mono_number(row['Reviews'])} ({str(row['Sample Read']).lower()})"
+    )
 
 
 def build_sentiment_theme_summary(df: pd.DataFrame) -> pd.DataFrame:
@@ -633,6 +726,21 @@ if not unresolved_rows.empty:
 
 theme_summary = build_theme_summary(df)
 platform_summary = build_platform_summary(df)
+employee_status_summary = build_segment_summary(
+    df[df["employee_status_segment"] != "Unknown / not stated"],
+    "employee_status_segment",
+    "Employee Status",
+    ["Current employee", "Former employee"],
+)
+rating_band_summary = build_segment_summary(
+    df[
+        (df["platform"] == "Glassdoor")
+        & (df["rating_band"] != "Not rated")
+    ],
+    "rating_band",
+    "Rating Band",
+    ["Low rating (1-2)", "Mid rating (3)", "High rating (4-5)"],
+)
 sentiment_theme_summary = build_sentiment_theme_summary(df)
 business_impact_table = build_business_impact_table(df, theme_summary, platform_summary)
 scenario_table, stability_table = build_stability_tables(df, theme_summary)
@@ -883,6 +991,34 @@ decision_validation_map = {
     },
 }
 
+validation_hypothesis_map = {
+    "Compensation & Benefits": {
+        "KPI to Test": "Overtime acceptance and fill rate by site and pay band",
+        "What Would Confirm": "Pay-sensitive sites or bands show weaker overtime fill, higher voluntary exits, or recurring escalation where compensation complaints are strongest.",
+        "Decision Enabled Now": "Compensation and schedule-design review",
+    },
+    "Workload & Burnout": {
+        "KPI to Test": "Absenteeism, call-off rate, and safety incidents by department and peak week",
+        "What Would Confirm": "Workload-heavy areas with the strongest external burnout signal also show weaker labor reliability or higher safety strain.",
+        "Decision Enabled Now": "Peak-workload and break-protection review",
+    },
+    "Management & Communication": {
+        "KPI to Test": "Write-up rates, department moves, promotion approvals, and escalation closure time by manager",
+        "What Would Confirm": "Managers or sites with stronger management-friction signal show higher control variance in discipline, movement, or promotion outcomes.",
+        "Decision Enabled Now": "Frontline manager-control review",
+    },
+    "Career Growth": {
+        "KPI to Test": "Promotion approvals and internal transfer rates by manager and tenure band",
+        "What Would Confirm": "Advancement-credibility complaints align with weaker promotion or mobility outcomes in the affected groups.",
+        "Decision Enabled Now": "Promotion-pathway and internal-mobility review",
+    },
+    "Work Culture": {
+        "KPI to Test": "Employee-relations cases and policy complaints tied to dignity or conduct issues",
+        "What Would Confirm": "Sites with stronger dignity-related complaints also show elevated relations cases or public escalation risk.",
+        "Decision Enabled Now": "Policy-risk and employee-relations review",
+    },
+}
+
 
 def classify_conclusion_strength(
     evidence_confidence: float,
@@ -900,6 +1036,24 @@ def classify_conclusion_strength(
     if evidence_confidence >= 6.0 and stability_pct >= 60:
         return "Moderate"
     return "Directional"
+
+
+def build_segment_snapshot(theme: str) -> Dict[str, str]:
+    return {
+        "Platform Check": strongest_segment_read(platform_summary, theme, "Platform", min_reviews=3),
+        "Employee Status Check": strongest_segment_read(
+            employee_status_summary,
+            theme,
+            "Employee Status",
+            min_reviews=5,
+        ),
+        "Rating-Band Check": strongest_segment_read(
+            rating_band_summary,
+            theme,
+            "Rating Band",
+            min_reviews=5,
+        ),
+    }
 
 observed_findings = [
     f"{mono_number(top_drivers['Negative Reviews'].sum())} of {mono_number(negative_reviews)} negative reviews ({pct(top_driver_negative_share)}) sit in {top_driver_theme_list}. The negative signal is concentrated rather than spread evenly across all five themes.",
@@ -944,6 +1098,7 @@ impact_evidence = [
     "The business-impact estimate now blends two visible components: impact potential from the operating model and observed evidence pressure from review volume, negative rate, severity, public exposure, and theme scale.",
     f"The strongest evidence confidence currently sits with {confidence_leader['Theme']} at {confidence_leader['Evidence Confidence']:.1f}/10, driven by sample depth, notebook pipeline confidence, direct-map share, and platform coverage.",
     f"YouTube remains more negative in this sample at {pct(youtube_negative_rate)} overall versus {pct(glassdoor_negative_rate)} on Glassdoor, but the smaller YouTube sample and wider interval mean that signal is treated as a multiplier on urgency, not as equal-weight proof.",
+    "Segment checks add support without pretending to be proof. Platform, employee-status, and rating-band reads are visible where sample is sufficient, so the current business conclusion is not resting on one blended average alone.",
     "The business-impact estimate remains an executive prioritization layer. It is more data-informed than a fixed score, but it is still not a direct HR or finance KPI.",
 ]
 
@@ -987,12 +1142,25 @@ leadership_safe_claims = [
     "It is safe to ask leadership for the next validating KPI immediately, because the current evidence is strong enough to justify follow-up but not strong enough to close the case on causality.",
 ]
 
+segment_snapshot_map = {theme: build_segment_snapshot(theme) for theme in EXEC_THEMES}
+segment_validation_bullets = [
+    (
+        f"{theme}: {segment_snapshot_map[theme]['Platform Check']}; "
+        f"{segment_snapshot_map[theme]['Employee Status Check']}; "
+        f"{segment_snapshot_map[theme]['Rating-Band Check']}."
+    )
+    for theme in top_driver_names
+]
+
 conclusion_strength_rows = []
+validation_matrix_rows = []
 for _, row in risk_ranking.iterrows():
     theme = row["Theme"]
     impact_row = business_impact_table[business_impact_table["Theme"] == theme].iloc[0]
     stability_row = stability_lookup.loc[theme]
     guidance = decision_validation_map[theme]
+    validation = validation_hypothesis_map[theme]
+    segment_snapshot = segment_snapshot_map[theme]
     conclusion_strength_rows.append(
         {
             "Theme": theme,
@@ -1004,12 +1172,25 @@ for _, row in risk_ranking.iterrows():
             ),
             "Evidence Confidence": f"{impact_row['Evidence Confidence']:.1f}/10",
             "Stability": f"{int(stability_row['Top 3 Appearances'])}/{scenario_count} scenarios",
-            "What leadership can say now": guidance["Leadership Read"],
+            "Current executive read": guidance["Leadership Read"],
             "Next KPI to validate": guidance["Next KPI"],
             "Best decision use": guidance["Decision Use"],
         }
     )
+    validation_matrix_rows.append(
+        {
+            "Theme": theme,
+            "Current external read": guidance["Leadership Read"],
+            "Platform check": segment_snapshot["Platform Check"],
+            "Employee-status check": segment_snapshot["Employee Status Check"],
+            "Rating-band check": segment_snapshot["Rating-Band Check"],
+            "KPI to test next": validation["KPI to Test"],
+            "What would confirm internally": validation["What Would Confirm"],
+            "Decision enabled now": validation["Decision Enabled Now"],
+        }
+    )
 conclusion_strength_table = pd.DataFrame(conclusion_strength_rows)
+validation_matrix_table = pd.DataFrame(validation_matrix_rows)
 
 decision_agenda = pd.DataFrame(
     [
@@ -1153,8 +1334,11 @@ executive_brief_text = "\n".join(
         "## Executive Judgment",
         *[f"- {item}" for item in executive_judgment],
         "",
-        "## What Leadership Can Say Today",
+        "## Current Executive Read",
         *[f"- {item}" for item in leadership_safe_claims],
+        "",
+        "## Segment Checks",
+        *[f"- {item}" for item in segment_validation_bullets],
         "",
         "## Risk Ranking",
         *[
@@ -1328,11 +1512,17 @@ with tab1:
             "Signal Strength": st.column_config.TextColumn("Signal Strength", width="small"),
             "Evidence Confidence": st.column_config.TextColumn("Evidence Confidence", width="small"),
             "Stability": st.column_config.TextColumn("Stability", width="small"),
-            "What leadership can say now": st.column_config.TextColumn("What leadership can say now", width="large"),
+            "Current executive read": st.column_config.TextColumn("Current executive read", width="large"),
             "Next KPI to validate": st.column_config.TextColumn("Next KPI to validate", width="medium"),
             "Best decision use": st.column_config.TextColumn("Best decision use", width="medium"),
         },
     )
+
+    st.markdown("### Segment Checks")
+    section_subtitle(
+        "Segment reads reduce the risk that the conclusion is coming from one blended average."
+    )
+    render_bullet_list(segment_validation_bullets)
 
     st.markdown("---")
     st.markdown("## Risk Ranking")
@@ -1374,7 +1564,7 @@ with tab2:
     st.markdown("### 90-Second Opening")
     render_bullet_list(boardroom_opening)
 
-    st.markdown("### What Leadership Can Say Today")
+    st.markdown("### Current Executive Read")
     render_bullet_list(leadership_safe_claims)
 
     download_cols = st.columns(4)
@@ -1430,6 +1620,26 @@ with tab2:
             "KPI to request": st.column_config.TextColumn("KPI to request", width="medium"),
             "Required cut": st.column_config.TextColumn("Required cut", width="medium"),
             "Why it matters": st.column_config.TextColumn("Why it matters", width="large"),
+        },
+    )
+
+    st.markdown("### Business Validation Matrix")
+    section_subtitle(
+        "Current external signal, strongest segment support, next KPI, and the internal pattern that would strengthen the conclusion."
+    )
+    st.dataframe(
+        validation_matrix_table,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Theme": st.column_config.TextColumn("Theme", width="small"),
+            "Current external read": st.column_config.TextColumn("Current external read", width="large"),
+            "Platform check": st.column_config.TextColumn("Platform check", width="medium"),
+            "Employee-status check": st.column_config.TextColumn("Employee-status check", width="medium"),
+            "Rating-band check": st.column_config.TextColumn("Rating-band check", width="medium"),
+            "KPI to test next": st.column_config.TextColumn("KPI to test next", width="medium"),
+            "What would confirm internally": st.column_config.TextColumn("What would confirm internally", width="large"),
+            "Decision enabled now": st.column_config.TextColumn("Decision enabled now", width="medium"),
         },
     )
 
