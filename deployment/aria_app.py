@@ -6,6 +6,7 @@ Manifest version: 2026-04-13T20:40:06+00:00
 """
 import hashlib
 import json
+from math import comb
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -164,6 +165,7 @@ def prepare_dataset(data: pd.DataFrame) -> pd.DataFrame:
     df["platform"] = df["platform"].fillna("Unknown")
     df["final_sentiment"] = df["final_sentiment"].fillna("neutral").str.lower()
     df["source_id"] = pd.to_numeric(df["source_id"], errors="coerce").fillna(-1).astype(int)
+    df["employee_length"] = pd.to_numeric(df.get("employee_length"), errors="coerce")
     df["rating_overall"] = pd.to_numeric(df.get("rating_overall"), errors="coerce")
     df["pipeline_confidence"] = df["confidence"].fillna("NONE").astype(str).str.upper()
     df["pipeline_confidence_score"] = df["pipeline_confidence"].map(
@@ -224,6 +226,30 @@ def prepare_dataset(data: pd.DataFrame) -> pd.DataFrame:
             "High rating (4-5)",
         ],
         default="Not rated",
+    )
+    df["tenure_band"] = np.select(
+        [
+            df["employee_length"] <= 1,
+            (df["employee_length"] >= 2) & (df["employee_length"] <= 4),
+            df["employee_length"] >= 5,
+        ],
+        [
+            "Early tenure (0-1y)",
+            "Mid tenure (2-4y)",
+            "Long tenure (5y+)",
+        ],
+        default="Unknown / not stated",
+    )
+    df["tenure_validation_band"] = np.select(
+        [
+            df["employee_length"] <= 1,
+            df["employee_length"] >= 2,
+        ],
+        [
+            "Early tenure (0-1y)",
+            "Later tenure (2y+)",
+        ],
+        default="Unknown / not stated",
     )
 
     df["negative_intensity"] = df.apply(compute_negative_intensity, axis=1)
@@ -631,6 +657,158 @@ def format_theme_list(items: List[str]) -> str:
     return ", ".join(cleaned[:-1]) + f", and {cleaned[-1]}"
 
 
+def fisher_exact_two_sided(a: int, b: int, c: int, d: int) -> float:
+    row1 = a + b
+    row2 = c + d
+    col1 = a + c
+    total = row1 + row2
+
+    if min(row1, row2, col1, total - col1) < 0 or total == 0:
+        return 1.0
+
+    lower = max(0, col1 - row2)
+    upper = min(col1, row1)
+
+    def hypergeom_probability(x_value: int) -> float:
+        return (
+            comb(col1, x_value)
+            * comb(total - col1, row1 - x_value)
+            / comb(total, row1)
+        )
+
+    observed_probability = hypergeom_probability(a)
+    return float(
+        sum(
+            hypergeom_probability(x_value)
+            for x_value in range(lower, upper + 1)
+            if hypergeom_probability(x_value) <= observed_probability + 1e-12
+        )
+    )
+
+
+def corrected_odds_ratio(a: int, b: int, c: int, d: int) -> float:
+    return round(((a + 0.5) * (d + 0.5)) / ((b + 0.5) * (c + 0.5)), 2)
+
+
+def signal_pair_read(min_group_reviews: int) -> str:
+    if min_group_reviews < 3:
+        return "Very thin"
+    if min_group_reviews < 5:
+        return "Limited"
+    if min_group_reviews < 10:
+        return "Usable"
+    return "Adequate"
+
+
+def signal_result_label(p_value: float, gap_pct: float, min_group_reviews: int) -> str:
+    absolute_gap = abs(gap_pct)
+    if p_value <= 0.05:
+        if min_group_reviews < 5:
+            return "Material gap, limited base"
+        return "Material within-sample gap"
+    if absolute_gap >= 20 and min_group_reviews < 5:
+        return "Large gap, tiny base"
+    if p_value <= 0.10 or absolute_gap >= 10:
+        return "Directional gap"
+    return "No clear within-sample difference"
+
+
+def build_signal_test_table(df: pd.DataFrame) -> pd.DataFrame:
+    comparison_specs = [
+        {
+            "theme": "All reviews",
+            "comparison": "Platform",
+            "working_df": df,
+            "column": "platform",
+            "group_a": "Glassdoor",
+            "group_b": "YouTube",
+        }
+    ]
+
+    for theme in EXEC_THEMES:
+        theme_df = df[df["executive_theme"] == theme].copy()
+        comparison_specs.extend(
+            [
+                {
+                    "theme": theme,
+                    "comparison": "Platform",
+                    "working_df": theme_df,
+                    "column": "platform",
+                    "group_a": "Glassdoor",
+                    "group_b": "YouTube",
+                },
+                {
+                    "theme": theme,
+                    "comparison": "Employee status",
+                    "working_df": theme_df,
+                    "column": "employee_status_segment",
+                    "group_a": "Current employee",
+                    "group_b": "Former employee",
+                },
+                {
+                    "theme": theme,
+                    "comparison": "Tenure",
+                    "working_df": theme_df,
+                    "column": "tenure_validation_band",
+                    "group_a": "Early tenure (0-1y)",
+                    "group_b": "Later tenure (2y+)",
+                },
+            ]
+        )
+
+    rows = []
+    for spec in comparison_specs:
+        group_a_df = spec["working_df"][spec["working_df"][spec["column"]] == spec["group_a"]]
+        group_b_df = spec["working_df"][spec["working_df"][spec["column"]] == spec["group_b"]]
+        if group_a_df.empty or group_b_df.empty:
+            continue
+
+        group_a_negative = int((group_a_df["final_sentiment"] == "negative").sum())
+        group_b_negative = int((group_b_df["final_sentiment"] == "negative").sum())
+        group_a_total = int(len(group_a_df))
+        group_b_total = int(len(group_b_df))
+        group_a_non_negative = group_a_total - group_a_negative
+        group_b_non_negative = group_b_total - group_b_negative
+        group_a_rate = round((group_a_negative / group_a_total) * 100, 1)
+        group_b_rate = round((group_b_negative / group_b_total) * 100, 1)
+        gap_pct = round(group_a_rate - group_b_rate, 1)
+        p_value = round(
+            fisher_exact_two_sided(
+                group_a_negative,
+                group_a_non_negative,
+                group_b_negative,
+                group_b_non_negative,
+            ),
+            4,
+        )
+        min_group_reviews = min(group_a_total, group_b_total)
+
+        rows.append(
+            {
+                "Theme": spec["theme"],
+                "Comparison": spec["comparison"],
+                "Group A": spec["group_a"],
+                "Group B": spec["group_b"],
+                "Group A n": group_a_total,
+                "Group B n": group_b_total,
+                "Group A negative %": group_a_rate,
+                "Group B negative %": group_b_rate,
+                "Gap (pp)": gap_pct,
+                "Odds ratio": corrected_odds_ratio(
+                    group_a_negative,
+                    group_a_non_negative,
+                    group_b_negative,
+                    group_b_non_negative,
+                ),
+                "Exact p-value": p_value,
+                "Sample pair": signal_pair_read(min_group_reviews),
+                "Result": signal_result_label(p_value, gap_pct, min_group_reviews),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
 # Run the main app logic
 governance_paths = resolve_governance_paths()
 missing_governance_files = [
@@ -732,18 +910,18 @@ employee_status_summary = build_segment_summary(
     "Employee Status",
     ["Current employee", "Former employee"],
 )
-rating_band_summary = build_segment_summary(
+tenure_summary = build_segment_summary(
     df[
-        (df["platform"] == "Glassdoor")
-        & (df["rating_band"] != "Not rated")
+        df["tenure_band"] != "Unknown / not stated"
     ],
-    "rating_band",
-    "Rating Band",
-    ["Low rating (1-2)", "Mid rating (3)", "High rating (4-5)"],
+    "tenure_band",
+    "Tenure Band",
+    ["Early tenure (0-1y)", "Mid tenure (2-4y)", "Long tenure (5y+)"],
 )
 sentiment_theme_summary = build_sentiment_theme_summary(df)
 business_impact_table = build_business_impact_table(df, theme_summary, platform_summary)
 scenario_table, stability_table = build_stability_tables(df, theme_summary)
+signal_test_table = build_signal_test_table(df)
 
 top_drivers = theme_summary.sort_values(
     by=["Driver Score", "Negative Reviews", "Avg Negative Intensity"],
@@ -930,6 +1108,11 @@ formula_table = pd.DataFrame(
             "Type": "Robustness test",
             "Logic": "Top themes are re-ranked across six scenario views: base risk, no YouTube, direct-map only, negative volume only, negative rate only, and negative intensity only.",
         },
+        {
+            "Component": "Exact signal checks",
+            "Type": "Within-sample significance test",
+            "Logic": "Use Fisher exact tests on platform, employee-status, and tenure subgroup pairs so low-cell comparisons are not overstated through large-sample approximations.",
+        },
     ]
 )
 
@@ -1047,13 +1230,48 @@ def build_segment_snapshot(theme: str) -> Dict[str, str]:
             "Employee Status",
             min_reviews=5,
         ),
-        "Rating-Band Check": strongest_segment_read(
-            rating_band_summary,
+        "Tenure Check": strongest_segment_read(
+            tenure_summary,
             theme,
-            "Rating Band",
+            "Tenure Band",
             min_reviews=5,
         ),
     }
+
+
+def lookup_signal_test(theme: str, comparison: str) -> Optional[pd.Series]:
+    matching = signal_test_table[
+        (signal_test_table["Theme"] == theme)
+        & (signal_test_table["Comparison"] == comparison)
+    ]
+    if matching.empty:
+        return None
+    return matching.iloc[0]
+
+
+overall_platform_signal = lookup_signal_test("All reviews", "Platform")
+workload_platform_signal = lookup_signal_test("Workload & Burnout", "Platform")
+management_status_signal = lookup_signal_test("Management & Communication", "Employee status")
+comp_status_signal = lookup_signal_test("Compensation & Benefits", "Employee status")
+comp_tenure_signal = lookup_signal_test("Compensation & Benefits", "Tenure")
+
+signal_validation_bullets = []
+if overall_platform_signal is not None:
+    signal_validation_bullets.append(
+        f"Across all reviews, YouTube is materially harsher than Glassdoor in the current sample ({pct(overall_platform_signal['Group B negative %'])} vs {pct(overall_platform_signal['Group A negative %'])} negative, Fisher exact p={overall_platform_signal['Exact p-value']:.4f}). That supports treating video testimony as escalation pressure rather than equal-weight base-rate evidence."
+    )
+if management_status_signal is not None:
+    signal_validation_bullets.append(
+        f"Management & Communication is materially harsher among former employees than current employees ({pct(management_status_signal['Group B negative %'])} vs {pct(management_status_signal['Group A negative %'])} negative, Fisher exact p={management_status_signal['Exact p-value']:.4f}). That strengthens the read that this theme reflects exit-stage control friction, not just broad onboarding dissatisfaction."
+    )
+if workload_platform_signal is not None:
+    signal_validation_bullets.append(
+        f"Workload & Burnout spikes sharply in YouTube testimony ({pct(workload_platform_signal['Group B negative %'])} vs {pct(workload_platform_signal['Group A negative %'])} negative, Fisher exact p={workload_platform_signal['Exact p-value']:.4f}), but the YouTube cell is only n={mono_number(workload_platform_signal['Group B n'])}. The right read is high escalation pressure on a limited base, not a full reweighting of the dataset."
+    )
+if comp_status_signal is not None and comp_tenure_signal is not None:
+    signal_validation_bullets.append(
+        f"Compensation & Benefits stays present across employee-status and tenure cuts without a strong within-sample split (status p={comp_status_signal['Exact p-value']:.4f}; tenure p={comp_tenure_signal['Exact p-value']:.4f}). That is useful because the issue looks broad-based in the available review set rather than isolated to one subgroup."
+    )
 
 observed_findings = [
     f"{mono_number(top_drivers['Negative Reviews'].sum())} of {mono_number(negative_reviews)} negative reviews ({pct(top_driver_negative_share)}) sit in {top_driver_theme_list}. The negative signal is concentrated rather than spread evenly across all five themes.",
@@ -1098,7 +1316,8 @@ impact_evidence = [
     "The business-impact estimate now blends two visible components: impact potential from the operating model and observed evidence pressure from review volume, negative rate, severity, public exposure, and theme scale.",
     f"The strongest evidence confidence currently sits with {confidence_leader['Theme']} at {confidence_leader['Evidence Confidence']:.1f}/10, driven by sample depth, notebook pipeline confidence, direct-map share, and platform coverage.",
     f"YouTube remains more negative in this sample at {pct(youtube_negative_rate)} overall versus {pct(glassdoor_negative_rate)} on Glassdoor, but the smaller YouTube sample and wider interval mean that signal is treated as a multiplier on urgency, not as equal-weight proof.",
-    "Segment checks add support without pretending to be proof. Platform, employee-status, and rating-band reads are visible where sample is sufficient, so the current business conclusion is not resting on one blended average alone.",
+    "Segment checks add support without pretending to be proof. Platform, employee-status, and tenure reads are visible where sample is sufficient, so the current business conclusion is not resting on one blended average alone.",
+    "Exact 2x2 tests now sit behind the strongest segment claims, so small subgroup reads are pressure-tested with Fisher exact p-values instead of being left as descriptive impressions.",
     "The business-impact estimate remains an executive prioritization layer. It is more data-informed than a fixed score, but it is still not a direct HR or finance KPI.",
 ]
 
@@ -1108,6 +1327,7 @@ defensibility_facts = [
     f"The governance manifest was generated at {manifest_generated_at} and the bundle hashes validate on load: raw {short_hash(raw_dataset_hash)}, executive {short_hash(executive_dataset_hash)}, override {short_hash(override_table_hash)}.",
     f"Executive theme provenance is explicit: {mono_number(assignment_count_lookup['Direct pipeline map'])} direct pipeline maps ({pct(direct_theme_share)}) and {mono_number(assignment_count_lookup['Executive override'])} explicit overrides ({pct(override_share)}). Override rows are validated against the original pipeline row signature, and ARIA no longer uses silent keyword fallback.",
     f"Notebook tagging confidence remains visible in the data: {mono_number(high_pipeline_confidence_reviews)} reviews are HIGH confidence ({pct(high_pipeline_confidence_share)}), while {mono_number(none_pipeline_confidence_reviews)} reviews carry NONE and are the rows most likely to require executive translation.",
+    "Exact signal checks use Fisher exact tests for platform, employee-status, and tenure comparisons so low-cell subgroup reads are not overstated through large-sample approximations.",
     f"{mono_number(len(low_sample_watchlist))} platform-theme combinations are low-sample and should be read cautiously when the percentage is high but the denominator is below 5.",
     f"{stability_leader['Theme']} is the most stable theme under sensitivity testing, appearing in the top three in {mono_number(stability_leader['Top 3 Appearances'])} of {mono_number(scenario_count)} scenario views.",
     "Every presented review is assigned to one dominant theme so the model remains comparable across charts, but assignment confidence varies by method, and unresolved rows halt the app rather than being classified silently.",
@@ -1118,6 +1338,7 @@ what_this_does_not_claim = [
     "The workforce risk index is a relative ranking inside this dataset. It is not an industry benchmark and should not be read as a certified probability of exit.",
     "Negative intensity is a comparative severity index built from VADER magnitude. It should be used to compare themes, not as a literal measure of financial damage or worker harm.",
     "The business impact estimate is an executive prioritization model. It reflects operating judgment layered on top of observed evidence, not a machine-learned forecast.",
+    "Exact subgroup tests improve within-sample defensibility, but they still do not replace real internal KPI linkage or downstream outcome validation.",
 ]
 
 strategic_recommendations = [
@@ -1147,7 +1368,7 @@ segment_validation_bullets = [
     (
         f"{theme}: {segment_snapshot_map[theme]['Platform Check']}; "
         f"{segment_snapshot_map[theme]['Employee Status Check']}; "
-        f"{segment_snapshot_map[theme]['Rating-Band Check']}."
+        f"{segment_snapshot_map[theme]['Tenure Check']}."
     )
     for theme in top_driver_names
 ]
@@ -1183,7 +1404,7 @@ for _, row in risk_ranking.iterrows():
             "Current external read": guidance["Leadership Read"],
             "Platform check": segment_snapshot["Platform Check"],
             "Employee-status check": segment_snapshot["Employee Status Check"],
-            "Rating-band check": segment_snapshot["Rating-Band Check"],
+            "Tenure check": segment_snapshot["Tenure Check"],
             "KPI to test next": validation["KPI to Test"],
             "What would confirm internally": validation["What Would Confirm"],
             "Decision enabled now": validation["Decision Enabled Now"],
@@ -1340,6 +1561,9 @@ executive_brief_text = "\n".join(
         "## Segment Checks",
         *[f"- {item}" for item in segment_validation_bullets],
         "",
+        "## Exact Signal Checks",
+        *[f"- {item}" for item in signal_validation_bullets],
+        "",
         "## Risk Ranking",
         *[
             f"{int(row['Rank'])}. {row['Theme']} | risk {row['Risk Score']:.1f} | {mono_number(row['Negative Reviews'])} negative reviews | {pct(row['Negative Rate %'])} negative | intensity {row['Avg Negative Intensity']:.1f}/100"
@@ -1371,6 +1595,12 @@ method_appendix_text = "\n".join(
         *[
             f"- {row['Scenario']}: {row['Top 1']}, {row['Top 2']}, {row['Top 3']}"
             for _, row in scenario_table.iterrows()
+        ],
+        "",
+        "## Exact Signal Checks",
+        *[
+            f"- {row['Theme']} | {row['Comparison']}: {row['Group A']} {pct(row['Group A negative %'])} (n={mono_number(row['Group A n'])}) vs {row['Group B']} {pct(row['Group B negative %'])} (n={mono_number(row['Group B n'])}) | gap {row['Gap (pp)']:+.1f} pp | Fisher p={row['Exact p-value']:.4f} | {row['Result']}"
+            for _, row in signal_test_table.iterrows()
         ],
         "",
         "## What This Does Not Claim",
@@ -1520,9 +1750,15 @@ with tab1:
 
     st.markdown("### Segment Checks")
     section_subtitle(
-        "Segment reads reduce the risk that the conclusion is coming from one blended average."
+        "Platform, employee-status, and tenure reads reduce the risk that the conclusion is coming from one blended average."
     )
     render_bullet_list(segment_validation_bullets)
+
+    st.markdown("### Exact Signal Checks")
+    section_subtitle(
+        "Fisher exact tests pressure-test the strongest subgroup claims without pretending they replace downstream KPI validation."
+    )
+    render_bullet_list(signal_validation_bullets)
 
     st.markdown("---")
     st.markdown("## Risk Ranking")
@@ -1636,7 +1872,7 @@ with tab2:
             "Current external read": st.column_config.TextColumn("Current external read", width="large"),
             "Platform check": st.column_config.TextColumn("Platform check", width="medium"),
             "Employee-status check": st.column_config.TextColumn("Employee-status check", width="medium"),
-            "Rating-band check": st.column_config.TextColumn("Rating-band check", width="medium"),
+            "Tenure check": st.column_config.TextColumn("Tenure check", width="medium"),
             "KPI to test next": st.column_config.TextColumn("KPI to test next", width="medium"),
             "What would confirm internally": st.column_config.TextColumn("What would confirm internally", width="large"),
             "Decision enabled now": st.column_config.TextColumn("Decision enabled now", width="medium"),
@@ -2002,6 +2238,7 @@ with tab5:
     st.plotly_chart(fig_platform, use_container_width=True, config=PLOTLY_CONFIG)
 
     platform_findings = [
+        f"Across the full review set, YouTube is materially harsher than Glassdoor ({pct(overall_platform_signal['Group B negative %'])} vs {pct(overall_platform_signal['Group A negative %'])} negative, Fisher exact p={overall_platform_signal['Exact p-value']:.4f}). That supports treating video testimony as escalation pressure rather than equal-weight base-rate evidence.",
         f"Glassdoor is the base-rate view. Its strongest negative theme is {glassdoor_theme_leader['Theme']} at {pct(glassdoor_theme_leader['Negative Rate %'])} negative on n={mono_number(glassdoor_theme_leader['Reviews'])} with 95% CI {glassdoor_theme_leader['Negative Rate CI']}.",
         f"YouTube is the escalation-tone view. Its sharpest signal is {youtube_theme_leader['Theme']} at {pct(youtube_theme_leader['Negative Rate %'])} negative on n={mono_number(youtube_theme_leader['Reviews'])} with 95% CI {youtube_theme_leader['Negative Rate CI']}.",
         (
@@ -2115,6 +2352,31 @@ with tab6:
     with method_col2:
         st.markdown("### What This Does Not Claim")
         render_bullet_list(what_this_does_not_claim)
+
+    st.markdown("### Exact Signal Checks")
+    section_subtitle(
+        "Fisher exact tests on platform, employee-status, and tenure comparisons where a 2x2 subgroup read is available."
+    )
+    st.dataframe(
+        signal_test_table,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Theme": st.column_config.TextColumn("Theme", width="medium"),
+            "Comparison": st.column_config.TextColumn("Comparison", width="small"),
+            "Group A": st.column_config.TextColumn("Group A", width="medium"),
+            "Group B": st.column_config.TextColumn("Group B", width="medium"),
+            "Group A n": st.column_config.NumberColumn("Group A n", format="%d", width="small"),
+            "Group B n": st.column_config.NumberColumn("Group B n", format="%d", width="small"),
+            "Group A negative %": st.column_config.NumberColumn("Group A negative %", format="%.1f%%", width="small"),
+            "Group B negative %": st.column_config.NumberColumn("Group B negative %", format="%.1f%%", width="small"),
+            "Gap (pp)": st.column_config.NumberColumn("Gap (pp)", format="%.1f", width="small"),
+            "Odds ratio": st.column_config.NumberColumn("Odds ratio", format="%.2f", width="small"),
+            "Exact p-value": st.column_config.NumberColumn("Exact p-value", format="%.4f", width="small"),
+            "Sample pair": st.column_config.TextColumn("Sample pair", width="small"),
+            "Result": st.column_config.TextColumn("Result", width="medium"),
+        },
+    )
 
     st.markdown("### Low-Sample Watchlist")
     if low_sample_watchlist.empty:

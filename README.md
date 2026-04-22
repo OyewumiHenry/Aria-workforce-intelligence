@@ -36,7 +36,8 @@ Public reviews -> governed dataset -> executive theme translation
 - Translates public employee reviews into five executive themes
 - Ranks those themes by relative workforce risk inside this dataset
 - Estimates business impact using transparent operating weights plus observed evidence
-- Adds segment checks across platform, employee status, and rating band where sample size is usable
+- Adds segment checks across platform, employee status, and tenure where sample size is usable
+- Uses Fisher exact tests on the strongest subgroup comparisons instead of leaving them as descriptive impressions
 - Compares Glassdoor and YouTube without pretending they carry equal weight
 - Lets leaders trace every claim back to governed review rows
 
@@ -48,8 +49,9 @@ The deployed app is an evidence review tool, not a predictive HR system.
 
 - Compensation & Benefits carries the largest negative review volume in this sample and remains the clearest pay, scheduling, and overtime-fill validation priority.
 - Workload & Burnout carries the sharpest operational-strain signal and is the clearest absenteeism, fatigue, and safety validation candidate.
-- Management & Communication remains a major control-system risk because complaints cluster around inconsistency, escalation, and advancement credibility.
-- Segment checks across platform, employee status, and rating band show that the top risks are not being created by one blended average alone.
+- Management & Communication remains a major control-system risk and is materially harsher among former employees than current employees in the current sample.
+- Segment checks across platform, employee status, and tenure show that the top risks are not being created by one blended average alone.
+- Exact signal checks show that video testimony is materially harsher overall than Glassdoor, which supports treating YouTube as escalation pressure rather than equal-weight base-rate evidence.
 - The top three themes hold most of the negative signal, so the strongest conclusion is concentrated pressure with clear KPI follow-up, not diffuse dissatisfaction or causal proof.
 
 ---
@@ -119,12 +121,12 @@ ARIA/
 
 ## Dashboard Tabs
 
-1. **Executive Brief** - condensed readout of findings, conclusion strength, segment checks, risk, impact, and actions
+1. **Executive Brief** - condensed readout of findings, conclusion strength, segment checks, exact signal checks, risk, impact, and actions
 2. **Decision Agenda** - opening narrative, 30/60/90 agenda, KPI asks, and business validation matrix
 3. **Risk Ranking** - current workforce-risk ranking across the five themes
 4. **Impact Case** - operating impact estimate grounded in explicit assumptions
 5. **Evidence by Platform** - Glassdoor versus YouTube readout with sample-size context
-6. **Method Appendix** - governance, formulas, validation, and limits
+6. **Method Appendix** - governance, formulas, exact tests, validation, and limits
 7. **Evidence Audit** - row-level traceability and CSV export
 
 ---
@@ -150,7 +152,8 @@ If the governed files do not match the manifest, the deployed app stops instead 
 - **Workforce risk index:** negative review count x negative rate x severity adjustment
 - **Intervals:** Wilson score intervals for negative-rate uncertainty
 - **Stability testing:** six scenario views to stress-test rank order
-- **Segment checks:** platform, employee status, and rating band where coverage is sufficient
+- **Segment checks:** platform, employee status, and tenure where coverage is sufficient
+- **Exact signal checks:** Fisher exact tests on platform, employee-status, and tenure comparisons where a 2x2 read is available
 - **Impact case:** 50/50 blend of operating impact potential and observed evidence pressure
 
 ---

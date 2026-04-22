@@ -42,6 +42,7 @@ It contains:
 - executive judgment
 - conclusion-strength table
 - segment checks
+- exact signal checks
 - risk ranking summary
 - impact case summary
 - strategic recommendations
@@ -111,6 +112,7 @@ It contains:
 - provenance metrics
 - sentiment-model selection notes
 - the 18 validation checks
+- exact signal checks
 - method facts
 - explicit non-claims
 - low-sample watchlist
